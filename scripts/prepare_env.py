@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-流式笔迹动画 - 环境引导脚本
+Hoạt hình nét vẽ dòng chảy - Script chuẩn bị môi trường
 
-职责：
-  1. 在 skill 目录下建立隔离的 Python 虚拟环境（已存在则复用）
-  2. 核对运行所需的第三方库是否可导入
-  3. 自动补齐缺失的库
-  4. 末行打印 ENV_PY=<解释器路径>，供上层调用方捕获
+Nhiệm vụ:
+  1. Tạo môi trường ảo Python cô lập trong thư mục skill (tái sử dụng nếu đã tồn tại)
+  2. Kiểm tra xem các thư viện bên thứ ba cần thiết đã có thể import hay chưa
+  3. Tự động cài đặt bổ sung các thư viện còn thiếu
+  4. In ra dòng cuối ENV_PY=<đường dẫn interpreter> để quy trình cấp trên thu nhận
 
-用法：
-  python prepare_env.py          # 建环境 + 补依赖，输出 ENV_PY
-  python prepare_env.py --check  # 仅探测，缺东西就以非零码退出
+Cách dùng:
+  python prepare_env.py          # Tạo môi trường + cài thư viện, in ra ENV_PY
+  python prepare_env.py --check  # Chỉ kiểm tra, thoát với mã lỗi nếu thiếu thư viện
 """
 from __future__ import annotations
 
@@ -20,21 +20,21 @@ import sys
 import venv
 from pathlib import Path
 
-# skill 根目录 = 本脚本向上两级
+# Thư mục gốc skill = từ script này lùi lên 2 cấp
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 VENV_ROOT = SKILL_ROOT / ".venv"
 
-# 解释器导入名 -> pip 安装名
+# Tên import trong interpreter -> Tên gói cài đặt bằng pip
 DEPS: dict[str, str] = {
     "cv2": "opencv-python",
     "numpy": "numpy",
-    "av": "av",  # PyAV：纯 pip 安装的 H.264 编码，无需系统 ffmpeg
-    "PIL": "Pillow",  # render_annotation_preview.py 画区域编号预览图（含中文标签）
+    "av": "av",  # PyAV: Mã hóa H.264 cài thuần qua pip, không cần cài ffmpeg hệ thống
+    "PIL": "Pillow",  # render_annotation_preview.py vẽ ảnh xem trước số thứ tự vùng (hỗ trợ nhãn tiếng Việt)
 }
 
 
 def interpreter_path() -> Path:
-    """虚拟环境里的 python 可执行文件位置（跨平台）。"""
+    """Vị trí file thực thi python trong môi trường ảo (hỗ trợ đa nền tảng)."""
     if sys.platform.startswith("win"):
         return VENV_ROOT / "Scripts" / "python.exe"
     return VENV_ROOT / "bin" / "python"
@@ -43,16 +43,16 @@ def interpreter_path() -> Path:
 def ensure_venv(check_only: bool) -> Path:
     py = interpreter_path()
     if VENV_ROOT.exists() and py.exists():
-        print(f"[ok] 复用现有虚拟环境: {VENV_ROOT}")
+        print(f"[ok] Tái sử dụng môi trường ảo hiện có: {VENV_ROOT}")
         return py
 
     if check_only:
-        print(f"[err] 虚拟环境尚未建立: {VENV_ROOT}")
+        print(f"[err] Môi trường ảo chưa được thiết lập: {VENV_ROOT}")
         sys.exit(1)
 
-    print(f"[..] 建立虚拟环境: {VENV_ROOT}")
+    print(f"[..] Đang tạo môi trường ảo: {VENV_ROOT}")
     venv.create(str(VENV_ROOT), with_pip=True)
-    print("[ok] 虚拟环境就绪")
+    print("[ok] Môi trường ảo đã sẵn sàng")
     return py
 
 
@@ -67,16 +67,16 @@ def can_import(py: Path, import_name: str) -> bool:
 def install(py: Path, packages: list[str]) -> bool:
     if not packages:
         return True
-    print(f"[..] 安装依赖: {', '.join(packages)}")
+    print(f"[..] Đang cài đặt phụ thuộc: {', '.join(packages)}")
     res = subprocess.run(
         [str(py), "-m", "pip", "install", "--quiet", *packages],
         capture_output=True,
         text=True,
     )
     if res.returncode != 0:
-        print(f"[err] 安装失败:\n{res.stderr}")
+        print(f"[err] Cài đặt thất bại:\n{res.stderr}")
         return False
-    print("[ok] 依赖安装完成")
+    print("[ok] Đã cài đặt xong phụ thuộc")
     return True
 
 
@@ -95,12 +95,12 @@ def main() -> None:
 
     if missing:
         if check_only:
-            print(f"\n缺 {len(missing)} 个依赖: {', '.join(missing)}")
+            print(f"\nThiếu {len(missing)} phụ thuộc: {', '.join(missing)}")
             sys.exit(1)
         if not install(py, missing):
             sys.exit(1)
 
-    # 末行：供调用方捕获的约定输出
+    # Dòng cuối: Đầu ra chuẩn theo quy ước để phía gọi thu nhận
     print(f"\nENV_PY={py}")
 
 
